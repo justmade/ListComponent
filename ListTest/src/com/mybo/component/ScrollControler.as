@@ -97,7 +97,9 @@
 		private var rebound:Boolean = false;
 		//利用加速度得出的距离
 		private var changeS:Number;
-
+		//固定距离
+		public var fixDistance:Boolean;
+		
 		//用于区分横屏还是竖屏
 		private var firstItemsPostion:Number ;
 		private var lastItemPostion:Number ;
@@ -114,15 +116,16 @@
 			this.container=contentGroup;
 			this.parent=parent;
 			initContainer();
+			resetMouseVector();
 		}
-	
-
+		
+		
 		/**单元数据*/
 		public function get virtualDataProvider():Array
 		{
 			return _virtualDataProvider;
 		}
-
+		
 		/**
 		 * @private
 		 */
@@ -130,11 +133,11 @@
 		{
 			_virtualDataProvider = value;
 		}
-
+		
 		private function initContainer():void
 		{
 			container.addEventListener(Event.ADDED_TO_STAGE,addListeners);
-//			container.addEventListener(Event.REMOVED_FROM_STAGE,clear);
+			//			container.addEventListener(Event.REMOVED_FROM_STAGE,clear);
 		}
 		/**
 		 * 当容器添加到显示列表，则注册事件侦听
@@ -143,9 +146,28 @@
 		protected function addListeners(event:Event):void
 		{
 			container.addEventListener(Main.downEvent, containerMouseHandler);
-//			container.stage.addEventListener(Event.MOUSE_LEAVE, mouseLeaveHandler);
+			//			container.stage.addEventListener(Event.MOUSE_LEAVE, mouseLeaveHandler);
 		}
 		
+		public function upDateDataProvider(value:Array):void{
+			
+			if(virtualDataProvider){
+				for( var i:int = virtualDataProvider.length -1 ; i >= 0 ; i --){
+					virtualDataProvider.splice(i,1);
+					virtualDataProvider[i] = null;
+				}
+				virtualDataProvider = null
+			}
+			
+			virtualDataProvider = value;
+			updateListItem();
+		}
+		
+		private function updateListItem():void{
+			for(var i:int = headIndex ; i < (tailIndex - headIndex) ; i++ ){
+				needUpDateItems[i - headIndex].data = virtualDataProvider[i].data;
+			}
+		}
 		
 		
 		private function containerMouseHandler(event:Event):void
@@ -160,12 +182,12 @@
 				currentMouseOffsetY=parent.mouseY - container.y;
 				fllowMouse=true;
 				
-			
+				
 				
 				Main.sceneManager.stage.addEventListener(Main.upEvent,containerMouseHandler);
 				Main.sceneManager.stage.addEventListener(Main.moveEvent,containerMouseHandler);
 			}
-			
+				
 			else if(event.type == Main.moveEvent){
 				recordMousePos(parent.mouseX , parent.mouseY);
 				speed = horizontalScrollEnabled?parent.mouseX - startX:parent.mouseY - startY ;
@@ -179,42 +201,31 @@
 				startX = parent.mouseX;
 				listMove();
 			}
-			
+				
 			else if (event.type == Main.upEvent)
 			{
-//				endX=parent.mouseX;
-//				endY=parent.mouseY;
-//				endTime=getTimer();
-//				var timeOffset:Number=endTime - startTime;
-//				directionX=(endX <= startX) ? "left" : "right";
-//				directionY=(endY <= startY) ? "up" : "down";
-//				speedX=(endX - startX) / (timeOffset / 20);
-//				speedY=(endY - startY) / (timeOffset / 20);
-//				currentMouseOffsetX=0;
-//				currentMouseOffsetY=0;
-//				fllowMouse=false;
-//				trace(checkXRange());
-//				trace(checkYRange());
 				Main.sceneManager.stage.removeEventListener(Main.upEvent,containerMouseHandler);
 				Main.sceneManager.stage.removeEventListener(Main.moveEvent,containerMouseHandler);
 				container.addEventListener(Main.downEvent, containerMouseHandler);
-			
-			
+				
+				
 				if(verticalScrollEnabled){
 					var l:int = mousePosVector.length - 1 ;
 					var m:int = Math.max(mousePosVector.length - 2,0);
 					
 					var p2p1:Number = int((mousePosVector[l].y - mousePosVector[m].y) * 100)/100;
-//					var p1p0:Number = int((mousePosVector[1].y - mousePosVector[0].y) * 100)/100;
-//					var p2p0:Number = int((mousePosVector[2].y - mousePosVector[0].y) * 100)/100;	
+					//					var p1p0:Number = int((mousePosVector[1].y - mousePosVector[0].y) * 100)/100;
+					//					var p2p0:Number = int((mousePosVector[2].y - mousePosVector[0].y) * 100)/100;	
 				}else if(horizontalScrollEnabled){
-					p2p1 = int((mousePosVector[mousePosVector.length - 1 ].x - mousePosVector[mousePosVector.length - 2].x) * 100)/100;
-//					p1p0 = int((mousePosVector[1].x - mousePosVector[0].x) * 100)/100;
-//					p2p0 = int((mousePosVector[2].x - mousePosVector[0].x) * 100)/100;	
+					if(mousePosVector && mousePosVector.length>=2){
+						p2p1 = int((mousePosVector[mousePosVector.length - 1 ].x - mousePosVector[mousePosVector.length - 2].x) * 100)/100;
+					}
+					//					p1p0 = int((mousePosVector[1].x - mousePosVector[0].x) * 100)/100;
+					//					p2p0 = int((mousePosVector[2].x - mousePosVector[0].x) * 100)/100;	
 				}
-						
-			
-			
+				
+				
+				
 				var s:Number = Math.max(Math.min(20 , p2p1),-20);
 				var v:Number = s * -1.5 ;
 				if(Math.abs(v) - Math.abs(s) >0){
@@ -281,6 +292,7 @@
 					distance += (lastItemPostion + lastItemSize - parentSize);
 				}
 				a = -Math.abs(a);
+				trace("distance",distance)
 			}
 			else if(moveState == "DOWN"){
 				distance = (headIndex) * itemHeight; 
@@ -296,11 +308,13 @@
 				setTweenParameters(0,0,0,3);
 			}
 			else if(lastItemPostion + lastItemSize < parentSize && (distance == 0||tailIndex == virtualDataProvider.length -1)){
+				
+				var dis:Number = parentSize < virtualDataProvider.length * lastItemSize ? parentSize : virtualDataProvider.length * (lastItemSize+gap);
 				rebound = true ;
-				boundDistace = parentSize - (lastItemPostion + lastItemSize);
+				boundDistace = dis - (lastItemPostion + lastItemSize);
 				setTweenParameters(0,0,0,3);
 			}
-			
+				
 			else if(Math.abs(changeS) > distance){
 				boundDistace = Math.min((Math.abs(changeS) - distance),30);
 				rebound = true ;
@@ -335,7 +349,6 @@
 				speed = Math.ceil((lastSpeed - a) * 100)/100 ;
 				var p:int = speed / Math.abs(speed);
 				speed = p * Math.min(Math.abs(speed),firstItemSize);
-				trace("speed:",speed ,itemHeight)
 				lastSpeed = a;
 			}
 			else {
@@ -389,7 +402,7 @@
 		{
 			listMove();
 			animationFrames ++ ;
-		
+			
 		}
 		
 		/**
@@ -402,7 +415,7 @@
 				for(var i:int = 0 ; i < needUpDateItems.length ; i++){
 					needUpDateItems[i].x += speed;
 				}
-
+				
 			}
 			else if(verticalScrollEnabled){
 				for(i = 0 ; i < needUpDateItems.length ; i++){
@@ -445,7 +458,10 @@
 					needUpDateItems[needUpDateItems.length -1].data = virtualDataProvider[tailIndex].data;
 				}
 			}
+			
 		}
+		
+		
 		
 		/**
 		 *更新item的位置信息 
@@ -454,15 +470,28 @@
 		private function updateItemData():void{
 			if(horizontalScrollEnabled){
 				firstItemsPostion = needUpDateItems[0].x ;
-				firstItemSize = needUpDateItems[0].width;
 				lastItemPostion = needUpDateItems[needUpDateItems.length -1].x ;
-				lastItemSize = needUpDateItems[needUpDateItems.length -1].width;
+				if(fixDistance){
+					firstItemSize = Math.ceil(itemWidth);
+					lastItemSize = Math.ceil(itemWidth);
+				}else{
+					firstItemSize = needUpDateItems[0].width;
+					lastItemSize = needUpDateItems[needUpDateItems.length -1].width;
+				}
+				
 			}else if(verticalScrollEnabled){
 				firstItemsPostion = needUpDateItems[0].y ;
-				firstItemSize = needUpDateItems[0].height;
 				lastItemPostion = needUpDateItems[needUpDateItems.length -1].y;
-				lastItemSize = needUpDateItems[needUpDateItems.length -1].height;
+				if(fixDistance){
+					firstItemSize = Math.ceil(itemHeight);
+					lastItemSize = Math.ceil(itemHeight);
+				}else{
+					firstItemSize = needUpDateItems[0].height;
+					lastItemSize = needUpDateItems[needUpDateItems.length -1].height;
+				}
 			}
+			
+//			trace("lastItemSize:",lastItemSize,itemHeight,itemWidth)
 		}
 		
 		/**
@@ -480,41 +509,41 @@
 		}
 		
 		
-//		private function enterFrameHandler(event:Event):void
-//		{
-//			if (fllowMouse)
-//			{
-//				if(horizontalScrollEnabled)
-//					container.x=parent.mouseX - currentMouseOffsetX;
-//				if(verticalScrollEnabled)
-//					container.y=parent.mouseY - currentMouseOffsetY;
-////				scrollBarRef.update(container.x,container.y);
-//				return;
-//			}
-//			if (Math.abs(speedX) < 4)
-//				speedX=0;
-//			if (Math.abs(speedY) < 4)
-//				speedY=0;
-//			if(speedX == 0 && speedY == 0)
-//			{
-////				scrollBarRef.clear();
-//				container.removeEventListener(Event.ENTER_FRAME, enterFrameHandler);
-//				return;
-//			}
-//			container.x+=speedX;
-//			container.y+=speedY;
-//			trace("s:",checkXRange());
-//			trace("s:",checkYRange());
-//			if (directionX == "left")
-//				speedX+=1;
-//			else
-//				speedX-=1;
-//			if (directionY == "up")
-//				speedY+=1;
-//			else
-//				speedY-=1;
-////			scrollBarRef.update(container.x,container.y);
-//		}
+		//		private function enterFrameHandler(event:Event):void
+		//		{
+		//			if (fllowMouse)
+		//			{
+		//				if(horizontalScrollEnabled)
+		//					container.x=parent.mouseX - currentMouseOffsetX;
+		//				if(verticalScrollEnabled)
+		//					container.y=parent.mouseY - currentMouseOffsetY;
+		////				scrollBarRef.update(container.x,container.y);
+		//				return;
+		//			}
+		//			if (Math.abs(speedX) < 4)
+		//				speedX=0;
+		//			if (Math.abs(speedY) < 4)
+		//				speedY=0;
+		//			if(speedX == 0 && speedY == 0)
+		//			{
+		////				scrollBarRef.clear();
+		//				container.removeEventListener(Event.ENTER_FRAME, enterFrameHandler);
+		//				return;
+		//			}
+		//			container.x+=speedX;
+		//			container.y+=speedY;
+		//			trace("s:",checkXRange());
+		//			trace("s:",checkYRange());
+		//			if (directionX == "left")
+		//				speedX+=1;
+		//			else
+		//				speedX-=1;
+		//			if (directionY == "up")
+		//				speedY+=1;
+		//			else
+		//				speedY-=1;
+		////			scrollBarRef.update(container.x,container.y);
+		//		}
 		
 		/**检查X值，确定不超出允许范围*/
 		private function checkXRange():Boolean
@@ -563,29 +592,31 @@
 			}
 			return false ;
 		}
-
+		
 		/**显示区域中的数据*/
 		public function get needUpDateItems():Vector.<MyItemRender>
 		{
 			return _needUpDateItems;
 		}
-
+		
 		/**
 		 * @private
 		 */
 		public function set needUpDateItems(value:Vector.<MyItemRender>):void
 		{
 			_needUpDateItems = value;
-			headIndex = 0 ;
-			tailIndex = _needUpDateItems.length - 1 ;
+			if(_needUpDateItems){
+				headIndex = 0 ;
+				tailIndex = _needUpDateItems.length - 1 ;
+			}
 		}
-
+		
 		/**速度*/
 		public function get speed():Number
 		{
 			return _speed;
 		}
-
+		
 		/**
 		 * @private
 		 */
@@ -599,24 +630,26 @@
 		 * 
 		 */
 		public function destroy():void{
-//			for(var i:int = mousePosVector.length -1 ; i>=0 ; i--){
-//				mousePosVector.splice(i,1);
-//				mousePosVector[i] = null ;
-//			}
-//			mousePosVector = null;
-			
-			for(var i:int = needUpDateItems.length -1 ; i >= 0 ; i --){
-//				container.removeChild(needUpDateItems[i]);
-				needUpDateItems.splice(i,1);
-				needUpDateItems[i] = null;
+			if(mousePosVector){
+				for(var i:int = mousePosVector.length -1 ; i>=0 ; i--){
+					mousePosVector[i] = null ;
+					mousePosVector.splice(i,1);
+				}
+//				mousePosVector = null;
 			}
-//			needUpDateItems = null;
+			if(needUpDateItems){
+				for(i = needUpDateItems.length -1 ; i >= 0 ; i --){
+					needUpDateItems[i] = null;
+					needUpDateItems.splice(i,1);
+				}
+//				needUpDateItems = null;
+			}
 			if(virtualDataProvider){
 				for( i = virtualDataProvider.length -1 ; i >= 0 ; i --){
-					virtualDataProvider.splice(i,1);
 					virtualDataProvider[i] = null;
+					virtualDataProvider.splice(i,1);
 				}
-				virtualDataProvider = null
+//				virtualDataProvider = null
 			}
 			if(container){
 				if(container.hasEventListener(Event.ENTER_FRAME)){
@@ -630,13 +663,13 @@
 //				this.container = null;
 			}
 		}
-
+		
 		/**水平可滚动*/
 		public function get horizontalScrollEnabled():Boolean
 		{
 			return _horizontalScrollEnabled;
 		}
-
+		
 		/**
 		 * @private
 		 */
@@ -647,13 +680,13 @@
 				parentSize = parentWidth
 			}
 		}
-
+		
 		/**垂直可滚动*/
 		public function get verticalScrollEnabled():Boolean
 		{
 			return _verticalScrollEnabled;
 		}
-
+		
 		/**
 		 * @private
 		 */
@@ -664,7 +697,7 @@
 				parentSize = parentHeight
 			}
 		}
-
-
+		
+		
 	}
 }

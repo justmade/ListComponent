@@ -28,14 +28,14 @@ package com.mybo.component
 		protected var contentWidth:Number=0; 
 		/**子元件高度*/ 
 		protected var contentHeight:Number=0;
-		
 		/**样式对象*/
 		private var style:Object;
-		
 		/**需要更新*/
 		private var _needUpdate:Boolean ;
 		
 		private var scrollControler:ScrollControler ;
+		
+		private var _fixDistance:Boolean = true;
 		
 		public function ScrollableContainer()
 		{
@@ -51,12 +51,18 @@ package com.mybo.component
 		
 		public function setScrllControlerData(needUpDateItems:Vector.<MyItemRender> , virtuallItems:Array , itemWidht:Number , itemHeight:Number,itemGap:Number = 0):void{
 			scrollControler.needUpDateItems = needUpDateItems;
+			trace("setScrllControlerDataneedUpDateItems",needUpDateItems.length)
 			scrollControler.virtualDataProvider = virtuallItems;
 			scrollControler.itemWidth = itemWidht ;
 			scrollControler.itemHeight = itemHeight ;
 			scrollControler.gap = itemGap ;
 			scrollControler.horizontalScrollEnabled = horizontalScrollEnabled;
 			scrollControler.verticalScrollEnabled = verticalScrollEnabled;
+			scrollControler.fixDistance = fixDistance;
+		}
+		
+		public function upDateDataProvider(value:Array):void{
+			scrollControler.upDateDataProvider(value);
 		}
 		
 		
@@ -202,6 +208,9 @@ package com.mybo.component
 			if (hasEventListener(Event.ENTER_FRAME)) {
 				removeEventListener(Event.ENTER_FRAME, updateDisplayList); 
 			}
+			for(var i:int = this.numChildren -1 ; i >=0 ; i --){
+				this.removeChildAt(i);
+			}
 //			scrollControler = null;
 		}
 		
@@ -343,5 +352,20 @@ package com.mybo.component
 			_layout = value;
 			needUpdate = true;
 		}
+
+		/**固定长度*/
+		public function get fixDistance():Boolean
+		{
+			return _fixDistance;
+		}
+
+		/**
+		 * @private
+		 */
+		public function set fixDistance(value:Boolean):void
+		{
+			_fixDistance = value;
+		}
+
 	}
 }

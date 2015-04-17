@@ -1,5 +1,7 @@
 ﻿package  com.mybo.component
 {
+	import com.mybo.gui.model.GameData;
+	
 	import flash.display.DisplayObject;
 	import flash.display.Sprite;
 	import flash.events.Event;
@@ -28,6 +30,15 @@
 		
 		private var _verticalScrollEnabled:Boolean=true;
 		
+		public var needUpDateitems:Vector.<MyItemRender> ;
+		
+		private var _fixDistance:Boolean = true;
+		
+		/**
+		 *特殊item的位移 
+		 */
+		public var itemDisplacement:Number = 0;
+		
 		
 		public function ScrollableList(itemRenderer:Class,itemGap:Number=0)
 		{
@@ -49,21 +60,45 @@
 			var itemHeight:Number = itemRender.height;
 			var itemWidth:Number  = itemRender.width ; 
 		
-			var needUpDateitems:Vector.<MyItemRender> = new Vector.<MyItemRender>();
+			needUpDateitems = new Vector.<MyItemRender>();
 			layout.layoutChildren(needUpDateitems,virtualItemArr,itemWidth,itemHeight,width,height,container,itemRenderer);
 			container.setScrllControlerData(needUpDateitems,virtualItemArr,itemWidth,itemHeight,itemGap);
+			
 			
 		}
 		
 		public function destroy():void{
 			if(container){
 				container.destroy();
+//				container = null;
+			}
+			clearVirtualItemArr();
+			clearItemArr();
+		}
+		
+		/**
+		 * 清理virtualItemArr数据
+		 * 
+		 */
+		private function clearVirtualItemArr():void{
+			if(virtualItemArr){
+				trace("clearVirtualItemArr",virtualItemArr);
 				for(var i:int = virtualItemArr.length -1 ; i >= 0 ; i --){
-					virtualItemArr.splice(i,1);
 					virtualItemArr[i] = null;
+					virtualItemArr.splice(i,1);
 				}
-				virtualItemArr= null;
-				container = null;
+//				virtualItemArr= null;
+			}
+		}
+		
+		private function clearItemArr():void{
+			trace("destroyclearItemArr")
+			if(needUpDateitems){
+				for(var i:int = needUpDateitems.length -1 ; i >= 0 ; i --){
+					needUpDateitems[i] = null;
+					needUpDateitems.splice(i,1);
+				}
+//				needUpDateitems= null;
 			}
 		}
 		
@@ -78,16 +113,27 @@
 		{
 			_dataProvider = value;
 			
-			virtualItemArr = []; 
+			virtualItemArr = new Array(); 
 			var itemHeight:Number = (itemRenderer as Object).itemHeight; 
 			for (var i:int = 0; i < dataProvider.length; i++) 
 			{ 
+				if(itemDisplacement !=0)dataProvider[i].itemDisplacement =  itemDisplacement;
 				var virtualItem:VirtualItemRenderer = new VirtualItemRenderer(dataProvider[i]); 
 				virtualItem.y = i*(itemHeight+itemGap); 
 				virtualItemArr.push(virtualItem); 
 			} 
-			
 			createItemRenderer();
+		}
+		
+		public function upDateDataProvider(value:Array):void{
+//			clearVirtualItemArr();
+			virtualItemArr = new Array(); 
+			for (var i:int = 0; i < value.length; i++) 
+			{ 
+				var virtualItem:VirtualItemRenderer = new VirtualItemRenderer(value[i]); 
+				virtualItemArr.push(virtualItem); 
+			}
+			container.upDateDataProvider(virtualItemArr);
 		}
 		
 		/**
@@ -155,6 +201,8 @@
 					child.selected = false;
 			}
 		}
+		
+
 		
 		public function setStyle(styleName:String , value:*):void{
 			container.setStyle(styleName,value);
@@ -244,6 +292,21 @@
 		{
 			_verticalScrollEnabled = value;
 			container.verticalScrollEnabled = value;
+		}
+
+		/**固定距离*/
+		public function get fixDistance():Boolean
+		{
+			return _fixDistance;
+		}
+
+		/**
+		 * @private
+		 */
+		public function set fixDistance(value:Boolean):void
+		{
+			_fixDistance = value;
+			container.fixDistance = value;
 		}
 
 
